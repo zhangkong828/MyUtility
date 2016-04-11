@@ -11,6 +11,7 @@ namespace ZK.Utility.Tests
     [TestClass()]
     public class RegexHelperTests
     {
+        
         [TestMethod()]
         public void IsMobileTest()
         {
