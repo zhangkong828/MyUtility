@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Newtonsoft.Json;
+using System;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace ZK.Utility
 {
@@ -11,8 +9,9 @@ namespace ZK.Utility
     /// html编码解码
     /// url编码解码
     /// base64
+    /// json序列化 反序列化
     /// </summary>
-   public  class CodeFormatHelper
+    public  class CodeFormatHelper
     {
         #region Html 编码 解码
         /// <summary>
@@ -140,6 +139,26 @@ namespace ZK.Utility
 
         #endregion
 
+        #region Json 序列化 反序列化
+        /// <summary>
+        /// Json 序列化
+        /// </summary>
+        public static string JsonSerializer(object obj)
+        {
+            return JsonConvert.SerializeObject(obj);
+        }
 
+        /// <summary>
+        /// Json 反序列化
+        /// </summary>
+        public static T JsonDeserializer<T>(string jsonstr)
+        {
+            if (string.IsNullOrEmpty(jsonstr))
+            {
+                return default(T);
+            }
+           return  JsonConvert.DeserializeObject<T>(jsonstr);
+        }
+        #endregion
     }
 }
