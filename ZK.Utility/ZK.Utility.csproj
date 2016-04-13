@@ -50,6 +50,7 @@
     <Compile Include="DateTime\DateTimeHelper.cs" />
     <Compile Include="Enum\EnumHelper.cs" />
     <Compile Include="File\FileHelper.cs" />
+    <Compile Include="HTTP\HttpHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Regex\RegexHelper.cs" />
     <Compile Include="SMS\MailHelper.cs" />
