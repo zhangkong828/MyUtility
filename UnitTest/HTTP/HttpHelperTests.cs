@@ -14,8 +14,7 @@ namespace ZK.Utility.Tests
         [TestMethod()]
         public void GetHtmlTest()
         {
-            var http = new HttpHelper();
-            var item = new HttpItem()
+            var result = new HttpHelper(new HttpItem()
             {
                 URL = "http://www.baidu.com",
                 Method = "GET",//URL     可选项 默认为Get    
@@ -28,19 +27,32 @@ namespace ZK.Utility.Tests
                 ContentType = "text/html",//返回类型    可选项有默认值    
                 Referer = "http://www.abc.com",//来源URL     可选项    
                 Allowautoredirect = true,//是否根据３０１跳转     可选项    
-               // CerPath = "d:\123.cer",//证书绝对路径     可选项不需要证书时可以不写这个参数    
+                                         // CerPath = "d:\123.cer",//证书绝对路径     可选项不需要证书时可以不写这个参数    
                 Connectionlimit = 1024,//最大连接数     可选项 默认为1024    
-               // Postdata = "username=abc&pwd=123",//Post数据     可选项GET时不需要写    
-               // ProxyIp = "192.168.1.105",//代理服务器ID     可选项 不需要代理 时可以不设置这三个参数    
-               // ProxyPwd = "123456",//代理服务器密码     可选项    
-               // ProxyUserName = "administrator",//代理服务器账户名     可选项    
-                ResultType = ResultType.String,//返回数据类型，是Byte还是String  
-                
-            };
-            var result = http.GetHtml(item);
+                                       // Postdata = "username=abc&pwd=123",//Post数据     可选项GET时不需要写    
+                                       // ProxyIp = "192.168.1.105",//代理服务器ID     可选项 不需要代理 时可以不设置这三个参数    
+                                       // ProxyPwd = "123456",//代理服务器密码     可选项    
+                                       // ProxyUserName = "administrator",//代理服务器账户名     可选项    
+
+            }).GetHtml();
             var html = result.Html;
             var cookie = result.Cookie;
+            var bytes = result.ResultByte;
             Assert.Fail();
+        }
+
+        [TestMethod()]
+        public void GetFileTest()
+        {
+            var path = @"d:\2.gif";
+            path = FileHelper.GetAbsolutePath(path);
+            //下载图片
+            var result = new HttpHelper(new HttpItem()
+            {
+                URL = "http://images.cnblogs.com/cnblogs_com/twobin/520730/o_blue.gif"
+            }).GetFile(path);
+
+            Assert.IsTrue(result);
         }
     }
 }

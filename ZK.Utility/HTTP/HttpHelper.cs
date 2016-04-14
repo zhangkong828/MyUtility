@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -54,20 +56,26 @@ namespace ZK.Utility
         private HttpWebResponse response = null;
         #endregion
 
+        private HttpItem item = null;
+        public HttpHelper(HttpItem parame)
+        {
+            item = parame;
+        }
+
         #region Public
         /// <summary>
-        /// 根据相传入的数据，得到相应页面数据
+        /// 获取Html
         /// </summary>
         /// <param name="item">参数类对象</param>
         /// <returns>返回HttpResult类型</returns>
-        public HttpResult GetHtml(HttpItem item)
+        public HttpResult GetHtml()
         {
             //返回参数
             HttpResult result = new HttpResult();
             try
             {
                 //准备参数
-                SetRequest(item);
+                SetRequest();
             }
             catch (Exception ex)
             {
@@ -79,14 +87,14 @@ namespace ZK.Utility
                 //请求数据
                 using (response = (HttpWebResponse)request.GetResponse())
                 {
-                    GetData(item, result);
+                    GetData(result);
                 }
             }
             catch (WebException ex)
             {
                 using (response = (HttpWebResponse)ex.Response)
                 {
-                    GetData(item, result);
+                    GetData(result);
                 }
             }
             catch (Exception ex)
@@ -96,6 +104,51 @@ namespace ZK.Utility
             if (item.IsToLower) result.Html = result.Html.ToLower();
             return result;
         }
+
+        /// <summary>
+        /// 下载文件
+        /// </summary>
+        /// <param name="path">要保存的绝对路径</param>
+        /// <returns></returns>
+        public bool GetFile(string savepath)
+        {
+            var result = false;
+            try
+            {
+                SetRequest();
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            try
+            {
+                using (response = (HttpWebResponse)request.GetResponse())
+                {
+                    using (Stream responseStream = response.GetResponseStream())
+                    {
+                        using (FileStream fs = File.Create(savepath))
+                        {
+                            byte[] bytes = new byte[102400];
+                            int n = 1;
+                            while (n > 0)
+                            {
+                                n = responseStream.Read(bytes, 0, 10240);
+                                fs.Write(bytes, 0, n);
+                            }
+                        }
+                    }
+                }
+                result = true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            return result;
+        }
+
+
         #endregion
 
         #region GetData
@@ -104,7 +157,7 @@ namespace ZK.Utility
         /// </summary>
         /// <param name="item"></param>
         /// <param name="result"></param>
-        private void GetData(HttpItem item, HttpResult result)
+        private void GetData(HttpResult result)
         {
             #region base
             //获取StatusCode
@@ -128,7 +181,7 @@ namespace ZK.Utility
             if (ResponseByte != null & ResponseByte.Length > 0)
             {
                 //设置编码
-                SetEncoding(item, result, ResponseByte);
+                SetEncoding(result, ResponseByte);
                 //得到返回的HTML
                 result.Html = encoding.GetString(ResponseByte);
             }
@@ -146,11 +199,9 @@ namespace ZK.Utility
         /// <param name="item">HttpItem</param>
         /// <param name="result">HttpResult</param>
         /// <param name="ResponseByte">byte[]</param>
-        private void SetEncoding(HttpItem item, HttpResult result, byte[] ResponseByte)
+        private void SetEncoding(HttpResult result, byte[] ResponseByte)
         {
-            //是否返回Byte类型数据
-            if (item.ResultType == ResultType.Byte) result.ResultByte = ResponseByte;
-            //从这里开始我们要无视编码了
+            result.ResultByte = ResponseByte;
             if (encoding == null)
             {
                 Match meta = Regex.Match(Encoding.Default.GetString(ResponseByte), "<meta[^<]*charset=([^<]*)[\"']", RegexOptions.IgnoreCase);
@@ -192,7 +243,7 @@ namespace ZK.Utility
         }
 
         /// <summary>
-        /// 提取网页Byte
+        /// 获取响应Byte
         /// </summary>
         /// <returns></returns>
         private byte[] GetByte()
@@ -216,6 +267,8 @@ namespace ZK.Utility
             }
             return ResponseByte;
         }
+
+
         #endregion
 
         #region SetRequest
@@ -223,17 +276,17 @@ namespace ZK.Utility
         /// 为请求准备参数
         /// </summary>
         ///<param name="item">参数列表</param>
-        private void SetRequest(HttpItem item)
+        private void SetRequest()
         {
             // 验证证书
-            SetCer(item);
+            SetCer();
             //设置Header参数
             if (item.Header != null && item.Header.Count > 0) foreach (string key in item.Header.AllKeys)
                 {
                     request.Headers.Add(key, item.Header[key]);
                 }
             // 设置代理
-            SetProxy(item);
+            SetProxy();
             if (item.ProtocolVersion != null) request.ProtocolVersion = item.ProtocolVersion;
             request.ServicePoint.Expect100Continue = item.Expect100Continue;
             //请求方式Get或者Post
@@ -257,7 +310,7 @@ namespace ZK.Utility
             //设置安全凭证
             request.Credentials = item.ICredentials;
             //设置Cookie
-            SetCookie(item);
+            SetCookie();
             //来源地址
             request.Referer = item.Referer;
             //是否执行跳转功能
@@ -267,7 +320,7 @@ namespace ZK.Utility
                 request.MaximumAutomaticRedirections = item.MaximumAutomaticRedirections;
             }
             //设置Post数据
-            SetPostData(item);
+            SetPostData();
             //设置最大连接
             if (item.Connectionlimit > 0) request.ServicePoint.ConnectionLimit = item.Connectionlimit;
         }
@@ -276,7 +329,7 @@ namespace ZK.Utility
         /// 设置证书
         /// </summary>
         /// <param name="item"></param>
-        private void SetCer(HttpItem item)
+        private void SetCer()
         {
             if (!string.IsNullOrWhiteSpace(item.CerPath))
             {
@@ -284,7 +337,7 @@ namespace ZK.Utility
                 ServicePointManager.ServerCertificateValidationCallback = new System.Net.Security.RemoteCertificateValidationCallback(CheckValidationResult);
                 //初始化对像，并设置请求的URL地址
                 request = (HttpWebRequest)WebRequest.Create(item.URL);
-                SetCerList(item);
+                SetCerList();
                 //将证书添加到请求里
                 request.ClientCertificates.Add(new X509Certificate(item.CerPath));
             }
@@ -292,7 +345,7 @@ namespace ZK.Utility
             {
                 //初始化对像，并设置请求的URL地址
                 request = (HttpWebRequest)WebRequest.Create(item.URL);
-                SetCerList(item);
+                SetCerList();
             }
         }
 
@@ -300,7 +353,7 @@ namespace ZK.Utility
         /// 设置多个证书
         /// </summary>
         /// <param name="item"></param>
-        private void SetCerList(HttpItem item)
+        private void SetCerList()
         {
             if (item.ClentCertificates != null && item.ClentCertificates.Count > 0)
             {
@@ -315,7 +368,7 @@ namespace ZK.Utility
         /// 设置Cookie
         /// </summary>
         /// <param name="item">Http参数</param>
-        private void SetCookie(HttpItem item)
+        private void SetCookie()
         {
             if (!string.IsNullOrEmpty(item.Cookie)) request.Headers[HttpRequestHeader.Cookie] = item.Cookie;
             if (item.CookieContainer != null)
@@ -335,7 +388,7 @@ namespace ZK.Utility
         /// 设置Post数据
         /// </summary>
         /// <param name="item">Http参数</param>
-        private void SetPostData(HttpItem item)
+        private void SetPostData()
         {
             //验证在得到结果时是否有传入数据
             if (request.Method.Trim().ToLower().Contains("post"))
@@ -356,6 +409,7 @@ namespace ZK.Utility
                     StreamReader r = new StreamReader(item.Postdata, postencoding);
                     buffer = postencoding.GetBytes(r.ReadToEnd());
                     r.Close();
+                    r.Dispose();
                 } //写入字符串
                 else if (!string.IsNullOrWhiteSpace(item.Postdata))
                 {
@@ -374,7 +428,7 @@ namespace ZK.Utility
         /// 如果为ieproxy  则直接使用ie代理
         /// </summary>
         /// <param name="item">参数对象</param>
-        private void SetProxy(HttpItem item)
+        private void SetProxy()
         {
             switch (item.ProxyType)
             {
@@ -406,7 +460,7 @@ namespace ZK.Utility
                     request.Proxy = WebRequest.GetSystemWebProxy();
                     break;
             }
-            
+
         }
 
         #endregion
@@ -597,15 +651,6 @@ namespace ZK.Utility
         /// </summary>
         public string ProxyIp { get; set; }
 
-        private ResultType resulttype = ResultType.String;
-        /// <summary>
-        /// 设置返回类型String和Byte
-        /// </summary>
-        public ResultType ResultType
-        {
-            get { return resulttype; }
-            set { resulttype = value; }
-        }
         private WebHeaderCollection header = new WebHeaderCollection();
         /// <summary>
         /// header对象
@@ -682,13 +727,17 @@ namespace ZK.Utility
         /// </summary>
         public CookieCollection CookieCollection { get; set; }
         /// <summary>
-        /// 返回的String类型数据 只有ResultType.String时才返回数据，其它情况为空
+        /// 返回的String类型数据
         /// </summary>
         public string Html { get; set; }
         /// <summary>
-        /// 返回的Byte数组 只有ResultType.Byte时才返回数据，其它情况为空
+        /// 返回的Byte数组
         /// </summary>
         public byte[] ResultByte { get; set; }
+        /// <summary>
+        /// 返回的响应流
+        /// </summary>
+        public Stream Stream { get; set; }
         /// <summary>
         /// header对象
         /// </summary>
@@ -701,21 +750,6 @@ namespace ZK.Utility
         /// 返回状态码,默认为OK
         /// </summary>
         public HttpStatusCode StatusCode { get; set; }
-    }
-
-    /// <summary>
-    /// 返回类型
-    /// </summary>
-    public enum ResultType
-    {
-        /// <summary>
-        /// 表示只返回字符串 只有Html有数据
-        /// </summary>
-        String,
-        /// <summary>
-        /// 表示返回字符串和字节流 ResultByte和Html都有数据返回
-        /// </summary>
-        Byte
     }
 
     /// <summary>
@@ -775,6 +809,18 @@ namespace ZK.Utility
         IEProxy
     }
 
+    /// <summary>
+    /// 图片类型
+    /// </summary>
+    public enum ImageType
+    {
+        Default,
+        Png,
+        Jpeg,
+        Gif,
+        Icon,
+        Bmp
+    }
     #endregion
 
 
